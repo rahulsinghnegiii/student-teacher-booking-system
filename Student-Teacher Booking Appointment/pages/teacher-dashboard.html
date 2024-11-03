@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard - Booking System</title>
+    <link rel="stylesheet" href="../css/teacher-style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <h2>Welcome, Teacher!</h2>
+        <button id="logoutButton">Logout</button>
+        
+        <div class="appointments">
+            <h3>Your Appointments</h3>
+            <ul id="appointmentsList" class="appointment-list"></ul>
+        </div>
+
+        <div class="messages">
+            <h3>Messages from Students</h3>
+            <ul id="messagesList" class="message-list"></ul>
+        </div>
+
+        <!-- Reschedule Modal -->
+        <div id="rescheduleModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h4>Reschedule Appointment</h4>
+                <label for="newDate">New Date:</label>
+                <input type="date" id="newDate" required>
+                <label for="newTime">New Time:</label>
+                <input type="time" id="newTime" required>
+                <button id="confirmRescheduleButton">Confirm Reschedule</button>
+                <button id="cancelRescheduleButton">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // JavaScript code remains unchanged
+        import { auth } from "../js/firebase-config.js";
+        import { signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+        import { db } from "../js/firebase-config.js";
+        import { collection, getDocs, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+        let currentAppointmentId = null;
+
+        async function checkUserRole() {
+            const user = auth.currentUser;
+            if (user) {
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                if (userDoc.exists()) {
+                    const userData = userDoc.data();
+                    if (userData.role === 'teacher') {
+                        loadAppointments();
+                        loadMessages();
+                    } else {
+                        window.location.href = "student-dashboard.html";
+                    }
+                } else {
+                    alert("User data not found.");
+                    window.location.href = "login.html";
+                }
+            } else {
+                window.location.href = "login.html";
+            }
+        }
+
+        document.getElementById("logoutButton").addEventListener("click", async () => {
+            await signOut(auth);
+            window.location.href = "login.html";
+        });
+
+        async function loadAppointments() {
+            const appointmentsList = document.getElementById("appointmentsList");
+            appointmentsList.innerHTML = "";
+
+            const appointmentsRef = collection(db, "appointments");
+            const snapshot = await getDocs(appointmentsRef);
+            
+            snapshot.forEach(doc => {
+                const appointment = doc.data();
+                if (appointment.status !== "Cancelled") {
+                    const listItem = document.createElement("li");
+                    listItem.innerHTML = `Appointment with ${appointment.studentEmail} at ${appointment.time} - Status: <strong>${appointment.status}</strong>`;
+
+                    const confirmButton = document.createElement("button");
+                    confirmButton.textContent = "Confirm";
+                    confirmButton.addEventListener("click", () => updateAppointmentStatus(doc.id, "Confirmed"));
+
+                    const cancelButton = document.createElement("button");
+                    cancelButton.textContent = "Cancel";
+                    cancelButton.addEventListener("click", () => updateAppointmentStatus(doc.id, "Cancelled"));
+
+                    const rescheduleButton = document.createElement("button");
+                    rescheduleButton.textContent = "Reschedule";
+                    rescheduleButton.addEventListener("click", () => openRescheduleModal(doc.id));
+
+                    listItem.appendChild(confirmButton);
+                    listItem.appendChild(cancelButton);
+                    listItem.appendChild(rescheduleButton);
+
+                    appointmentsList.appendChild(listItem);
+                }
+            });
+        }
+
+        async function updateAppointmentStatus(appointmentId, newStatus) {
+            try {
+                const appointmentRef = doc(db, "appointments", appointmentId);
+                await updateDoc(appointmentRef, { status: newStatus });
+                alert("Appointment status updated successfully!");
+                loadAppointments();
+            } catch (error) {
+                console.error("Error updating appointment status: ", error);
+                alert("Failed to update appointment status.");
+            }
+        }
+
+        function openRescheduleModal(appointmentId) {
+            currentAppointmentId = appointmentId;
+            document.getElementById("rescheduleModal").style.display = "block";
+        }
+
+        function closeRescheduleModal() {
+            document.getElementById("rescheduleModal").style.display = "none";
+            currentAppointmentId = null;
+        }
+
+        async function confirmReschedule() {
+            const newDate = document.getElementById("newDate").value;
+            const newTime = document.getElementById("newTime").value;
+            
+            if (newDate && newTime) {
+                try {
+                    const appointmentRef = doc(db, "appointments", currentAppointmentId);
+                    await updateDoc(appointmentRef, { time: `${newDate} ${newTime}`, status: "Rescheduled" });
+                    alert("Appointment rescheduled successfully!");
+                    closeRescheduleModal();
+                    loadAppointments();
+                } catch (error) {
+                    console.error("Error rescheduling appointment: ", error);
+                    alert("Failed to reschedule appointment.");
+                }
+            } else {
+                alert("Please select a new date and time.");
+            }
+        }
+
+        document.getElementById("confirmRescheduleButton").addEventListener("click", confirmReschedule);
+        document.getElementById("cancelRescheduleButton").addEventListener("click", closeRescheduleModal);
+
+        async function loadMessages() {
+            const messagesList = document.getElementById("messagesList");
+            messagesList.innerHTML = "";
+            
+            const messagesRef = collection(db, "messages");
+            const snapshot = await getDocs(messagesRef);
+            snapshot.forEach(doc => {
+                const message = doc.data();
+                if (message.status !== "Read") {
+                    const listItem = document.createElement("li");
+                    listItem.innerHTML = `Message from ${message.studentEmail}: ${message.content}`;
+
+                    const markAsReadButton = document.createElement("button");
+                    markAsReadButton.textContent = "Mark as Read";
+                    markAsReadButton.addEventListener("click", () => markMessageAsRead(doc.id));
+
+                    listItem.appendChild(markAsReadButton);
+                    messagesList.appendChild(listItem);
+                }
+            });
+        }
+
+        async function markMessageAsRead(messageId) {
+            try {
+                const messageRef = doc(db, "messages", messageId);
+                await updateDoc(messageRef, { status: "Read" });
+                alert("Message marked as read!");
+                loadMessages();
+            } catch (error) {
+                console.error("Error marking message as read: ", error);
+                alert("Failed to mark message as read.");
+            }
+        }
+
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                checkUserRole();
+            } else {
+                window.location.href = "login.html";
+            }
+        });
+    </script>
+</body>
+</html>

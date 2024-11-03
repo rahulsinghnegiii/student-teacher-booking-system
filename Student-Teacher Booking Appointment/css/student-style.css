@@ -1,0 +1,111 @@
+/* General Styles */
+body {
+    font-family: 'Roboto', sans-serif;
+    background: linear-gradient(135deg, #E1F5FE, #B3E5FC);
+    margin: 0;
+    padding: 0;
+    color: #333;
+}
+
+.dashboard-container {
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 20px;
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+h2 {
+    color: #00796B;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* Button Styles */
+button {
+    background-color: #00796B;
+    color: #ffffff;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    margin: 5px 0;
+}
+
+button:hover {
+    background-color: #004D40;
+    transform: translateY(-2px);
+}
+
+/* Appointment Section */
+.appointments, .book-appointment, .send-message {
+    margin: 20px 0;
+    padding: 15px;
+    border-radius: 8px;
+    background: #f0f4c3;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+h3 {
+    color: #33691E;
+}
+
+select, input[type="datetime-local"], textarea {
+    width: calc(100% - 20px);
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    transition: border-color 0.3s ease;
+}
+
+select:focus, input[type="datetime-local"]:focus, textarea:focus {
+    border-color: #00796B;
+    outline: none;
+}
+
+/* Appointment List */
+ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+li {
+    background: #ffffff;
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+li button {
+    background: #D32F2F; /* Cancel button */
+    margin-left: 10px;
+}
+
+li button:hover {
+    background: #B71C1C;
+}
+
+/* Message Section */
+textarea {
+    height: 100px;
+}
+
+#messageInput {
+    resize: none;
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+    .dashboard-container {
+        width: 90%;
+        margin: 20px auto;
+    }
+}

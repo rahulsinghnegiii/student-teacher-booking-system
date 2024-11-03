@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register</title>
+    <link rel="stylesheet" href="../css/register-style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        h2 {
+            margin-bottom: 20px;
+        }
+        form {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 5px;
+            outline: none;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background: #4CAF50;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        #loading-spinner {
+            display: none;
+            color: #fff;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Register</h2>
+    <form id="register-form">
+        <input type="text" id="register-name" placeholder="Full Name" required>
+        <input type="email" id="register-email" placeholder="Email" required>
+        <input type="password" id="register-password" placeholder="Password" required>
+        <input type="password" id="register-confirm-password" placeholder="Confirm Password" required>
+        <select id="register-role" required>
+            <option value="" disabled selected>Select Role</option>
+            <option value="student">Student</option>
+            <option value="teacher">Teacher</option>
+        </select>
+        <input type="text" id="register-department" placeholder="Department (for Teachers)" required>
+        <input type="text" id="register-subject" placeholder="Subject(s) (for Teachers)" required>
+        <button type="submit">Register</button>
+    </form>
+  
+    <div id="loading-spinner">Loading...</div>
+
+    <script type="module">
+        import { registerUser } from "../js/auth.js"; // Ensure this file handles registration logic
+
+        document.getElementById("register-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const name = document.getElementById("register-name").value;
+            const email = document.getElementById("register-email").value;
+            const password = document.getElementById("register-password").value;
+            const confirmPassword = document.getElementById("register-confirm-password").value;
+            const role = document.getElementById("register-role").value;
+            const department = document.getElementById("register-department").value;
+            const subject = document.getElementById("register-subject").value;
+
+            // Check if passwords match
+            if (password !== confirmPassword) {
+                alert("Passwords do not match.");
+                return;
+            }
+
+            // Show loading spinner
+            const spinner = document.getElementById("loading-spinner");
+            spinner.style.display = "block";
+
+            try {
+                await registerUser(email, password, role, name, department, subject); // Ensure registerUser handles department and subject
+                alert("Registration successful! Please wait for admin approval.");
+                window.location.href = "login.html"; // Redirect to login after registration
+            } catch (error) {
+                console.error("Registration error:", error);
+                alert("Registration failed: " + error.message);
+            } finally {
+                // Hide loading spinner
+                spinner.style.display = "none";
+            }
+        });
+    </script>
+</body>
+</html>

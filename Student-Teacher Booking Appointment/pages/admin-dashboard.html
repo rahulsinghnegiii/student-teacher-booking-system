@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Booking System</title>
+    <link rel="stylesheet" href="../css/admin-style.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
+            color: #fff;
+        }
+        .dashboard-container {
+            padding: 20px;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .section {
+            margin: 20px 0;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        input {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+            outline: none;
+        }
+        .btn {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background: #4CAF50;
+            color: white;
+            font-size: 16px;
+        }
+        .btn:hover {
+            background: #45a049;
+        }
+        .list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 5px 0;
+        }
+        .approve {
+            margin-left: 10px;
+            background: #007BFF;
+        }
+        .approve:hover {
+            background: #0056b3;
+        }
+        .delete {
+            margin-left: 10px;
+            background: #dc3545;
+        }
+        .delete:hover {
+            background: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <header>
+            <h2>Welcome, Admin!</h2>
+            <button id="logoutButton" class="btn">Logout</button>
+        </header>
+        
+        <div class="section">
+            <h3>Manage Teachers</h3>
+            <form id="addTeacherForm">
+                <div class="form-group">
+                    <input type="text" id="teacherName" placeholder="Teacher Name" required>
+                    <input type="text" id="teacherDepartment" placeholder="Department" required>
+                    <input type="text" id="teacherSubject" placeholder="Subject" required>
+                </div>
+                <button type="submit" class="btn primary">Add Teacher</button>
+            </form>
+            <ul id="teachersList" class="list"></ul>
+        </div>
+
+        <div class="section">
+            <h3>Approve Teacher Registrations</h3>
+            <ul id="pendingTeachersList" class="list"></ul>
+        </div>
+
+        <div class="section">
+            <h3>Approve Student Registrations</h3>
+            <ul id="studentRegistrationsList" class="list"></ul>
+        </div>
+
+        <div class="section">
+            <h3>View Appointments</h3>
+            <ul id="appointmentsList" class="list"></ul>
+        </div>
+    </div>
+
+    <!-- Firebase and Script Imports -->
+    <script type="module" src="../js/firebase-config.js"></script>
+    <script type="module">
+        import { db, auth } from '../js/firebase-config.js';
+        import { collection, getDocs, addDoc, updateDoc, query, where, deleteDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+        // Logout functionality
+        document.getElementById('logoutButton').addEventListener('click', async () => {
+            try {
+                await auth.signOut();
+                window.location.href = "../index.html"; // Redirect to login page after logout
+            } catch (error) {
+                console.error("Error signing out:", error);
+            }
+        });
+
+        // Fetch and display teachers
+        const fetchTeachers = async () => {
+            const teachersList = document.getElementById('teachersList');
+            teachersList.innerHTML = ''; // Clear the list
+
+            const teachersSnapshot = await getDocs(collection(db, 'teachers'));
+            teachersSnapshot.forEach(doc => {
+                const teacher = doc.data();
+                const li = document.createElement('li');
+                li.textContent = `${teacher.name} - ${teacher.department} - ${teacher.subject}`;
+
+                // Create a delete button for each teacher
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.className = 'btn delete';
+
+                // Add delete functionality
+                deleteButton.addEventListener('click', async () => {
+                    try {
+                        await deleteDoc(doc.ref); // Delete the teacher document
+                        fetchTeachers(); // Refresh the teacher list
+                    } catch (error) {
+                        console.error("Error deleting teacher:", error);
+                    }
+                });
+
+                li.appendChild(deleteButton);
+                teachersList.appendChild(li);
+            });
+        };
+
+        // Add teacher functionality
+        document.getElementById('addTeacherForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('teacherName').value;
+            const department = document.getElementById('teacherDepartment').value;
+            const subject = document.getElementById('teacherSubject').value;
+
+            try {
+                await addDoc(collection(db, 'teachers'), {
+                    name,
+                    department,
+                    subject,
+                    approved: false,
+                    registrationDate: new Date().toISOString()
+                });
+                fetchTeachers(); // Refresh the teacher list
+                fetchPendingTeachers(); // Refresh the pending teachers list
+                e.target.reset(); // Clear the form
+            } catch (error) {
+                console.error("Error adding teacher:", error);
+            }
+        });
+
+        // Fetch and display pending teacher registrations
+        const fetchPendingTeachers = async () => {
+            const pendingTeachersList = document.getElementById('pendingTeachersList');
+            pendingTeachersList.innerHTML = ''; // Clear the list
+
+            const pendingTeachersQuery = query(collection(db, 'teachers'), where('approved', '==', false));
+            const pendingTeachersSnapshot = await getDocs(pendingTeachersQuery);
+            pendingTeachersSnapshot.forEach(doc => {
+                const teacher = doc.data();
+                const li = document.createElement('li');
+                li.textContent = `${teacher.name} - ${teacher.department} - ${teacher.subject}`;
+
+                // Add approve button
+                const approveButton = document.createElement('button');
+                approveButton.textContent = 'Approve';
+                approveButton.className = 'btn approve';
+                approveButton.addEventListener('click', async () => {
+                    try {
+                        await updateDoc(doc.ref, { approved: true });
+                        fetchPendingTeachers(); // Refresh the pending teachers list
+                        fetchTeachers(); // Refresh the teacher list
+                    } catch (error) {
+                        console.error("Error approving teacher:", error);
+                    }
+                });
+
+                li.appendChild(approveButton);
+                pendingTeachersList.appendChild(li);
+            });
+        };
+
+        // Fetch and display student registrations
+        const fetchStudentRegistrations = async () => {
+            const studentRegistrationsList = document.getElementById('studentRegistrationsList');
+            studentRegistrationsList.innerHTML = ''; // Clear the list
+
+            const pendingStudentsQuery = query(collection(db, 'students'), where('approved', '==', false));
+            const pendingStudentsSnapshot = await getDocs(pendingStudentsQuery);
+            pendingStudentsSnapshot.forEach(doc => {
+                const student = doc.data();
+                const li = document.createElement('li');
+                li.textContent = `${student.name} - ${student.department}`;
+
+                // Add approve button
+                const approveButton = document.createElement('button');
+                approveButton.textContent = 'Approve';
+                approveButton.className = 'btn approve';
+                approveButton.addEventListener('click', async () => {
+                    try {
+                        await updateDoc(doc.ref, { approved: true });
+                        fetchStudentRegistrations(); // Refresh the student registrations list
+                    } catch (error) {
+                        console.error("Error approving student:", error);
+                    }
+                });
+
+                li.appendChild(approveButton);
+                studentRegistrationsList.appendChild(li);
+            });
+        };
+
+        // Fetch and display appointments
+        const fetchAppointments = async () => {
+            const appointmentsList = document.getElementById('appointmentsList');
+            appointmentsList.innerHTML = ''; // Clear the list
+
+            const appointmentsSnapshot = await getDocs(collection(db, 'appointments'));
+            appointmentsSnapshot.forEach(doc => {
+                const appointment = doc.data();
+                const li = document.createElement('li');
+                li.textContent = `Appointment with ${appointment.teacher} on ${appointment.date}`;
+
+                appointmentsList.appendChild(li);
+            });
+        };
+
+        // Initial fetches on page load
+        window.onload = async () => {
+            fetchTeachers(); // Load the teachers list
+            fetchPendingTeachers(); // Load the pending teachers
+            fetchStudentRegistrations(); // Load the student registrations
+            fetchAppointments(); // Load appointments
+        };
+    </script>
+</body>
+</html>
+
